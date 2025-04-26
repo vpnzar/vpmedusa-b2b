@@ -2,11 +2,11 @@
   "compilerOptions": {
     "target": "ES2021",
     "esModuleInterop": true,
-    "module": "Node16",
-    "moduleResolution": "Node16",
+     "module": "NodeNext",         // Використовуємо ESNext модулі
+    "moduleResolution": "nodenext", // Використовуємо nodenext для ES модуля
+    "skipLibCheck": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "strictNullChecks": true,
     "declaration": false,
@@ -15,10 +15,10 @@
     "outDir": "./.medusa/server",
     "rootDir": "./",
     "baseUrl": ".",
-    "jsx": "react-jsx",
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "checkJs": false,
+    "allowSyntheticDefaultImports": true,
     "paths": {
       "@starter/types": ["./src/types"],
       "@starter/types/*": ["./src/types/*"]

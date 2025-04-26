@@ -1,35 +1,14 @@
-import { QUOTE_MODULE } from "./src/modules/quote/index";
-import { APPROVAL_MODULE } from "./src/modules/approval/index";
-import { COMPANY_MODULE } from "./src/modules/company/index";
+import { QUOTE_MODULE } from "./src/modules/quote/index.js";
+import { APPROVAL_MODULE } from "./src/modules/approval/index.js";
+import { COMPANY_MODULE } from "./src/modules/company/index.js";
 import { loadEnv, defineConfig, Modules } from "@medusajs/framework/utils";
+import { exec } from "child_process";  // Для запуску скриптів
 
-// Завантаження середовищних змінних
 loadEnv(process.env.NODE_ENV!, process.cwd());
-
-// Плагіни
-const plugins = [
-  {
-    resolve: `medusa-plugin-meilisearch`,
-    options: {
-      config: {
-        host: process.env.MEILISEARCH_HOST || "http://localhost:7700",
-        apiKey: process.env.MEILISEARCH_API_KEY || "masterKey",
-      },
-      settings: {
-        product: {
-          indexSettings: {
-            searchableAttributes: ["title", "description"],
-          },
-        },
-      },
-    },
-  },
-];
 
 module.exports = defineConfig({
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
-   
     http: {
       storeCors: process.env.STORE_CORS!,
       adminCors: process.env.ADMIN_CORS!,
@@ -38,7 +17,7 @@ module.exports = defineConfig({
       cookieSecret: process.env.COOKIE_SECRET || "supersecret",
     },
   },
-  plugins,  // Підключення плагінів
+  plugins: [],
   modules: {
     [COMPANY_MODULE]: {
       resolve: "./modules/company",
@@ -56,4 +35,14 @@ module.exports = defineConfig({
       resolve: "@medusajs/medusa/workflow-engine-inmemory",
     },
   },
+});
+
+// Автоматичний виклик скрипту індексації після запуску Medusa (при бажанні)
+exec("yarn reindex-products", (err, stdout, stderr) => {
+  if (err) {
+    console.error(`exec error: ${err}`);
+    return;
+  }
+  console.log(`stdout: ${stdout}`);
+  console.error(`stderr: ${stderr}`);
 });
