@@ -1,6 +1,8 @@
-import { QUOTE_MODULE } from "./src/modules/quote/index";
-import { APPROVAL_MODULE } from "./src/modules/approval/index";
-import { COMPANY_MODULE } from "./src/modules/company/index";
+import { QUOTE_MODULE } from "./src/modules/quote";
+import { APPROVAL_MODULE } from "./src/modules/approval";
+import { COMPANY_MODULE } from "./src/modules/company";
+import { ODOO_MODULE } from "./src/modules/odoo"; // ← додано імпорт
+
 import { loadEnv, defineConfig, Modules } from "@medusajs/framework/utils";
 
 // Завантаження середовищних змінних
@@ -26,11 +28,9 @@ const plugins = [
   },
 ];
 
-module.exports = defineConfig({
- 
+export default defineConfig({
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
-   
     http: {
       storeCors: process.env.STORE_CORS!,
       adminCors: process.env.ADMIN_CORS || "http://localhost:9000",
@@ -39,16 +39,25 @@ module.exports = defineConfig({
       cookieSecret: process.env.COOKIE_SECRET || "supersecret",
     },
   },
-  plugins,  // Підключення плагінів
+  plugins, // Підключення плагінів
   modules: {
+    [ODOO_MODULE]: {
+      resolve: "./src/modules/odoo", // ← правильний шлях
+      options: {
+        url: process.env.ODOO_URL,
+        dbName: process.env.ODOO_DB,
+        username: process.env.ODOO_USERNAME,
+        password: process.env.ODOO_PASSWORD, // ← використовується правильне поле для паролю
+      },
+    },
     [COMPANY_MODULE]: {
-      resolve: "./modules/company",
+      resolve: "./src/modules/company", // ← правильний шлях
     },
     [QUOTE_MODULE]: {
-      resolve: "./modules/quote",
+      resolve: "./src/modules/quote", // ← правильний шлях
     },
     [APPROVAL_MODULE]: {
-      resolve: "./modules/approval",
+      resolve: "./src/modules/approval", // ← правильний шлях
     },
     [Modules.CACHE]: {
       resolve: "@medusajs/medusa/cache-inmemory",
