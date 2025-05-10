@@ -1,9 +1,8 @@
 import { QUOTE_MODULE } from "./src/modules/quote";
 import { APPROVAL_MODULE } from "./src/modules/approval";
 import { COMPANY_MODULE } from "./src/modules/company";
-import { ODOO_MODULE } from "./src/modules/odoo"; // ← додано імпорт
-
-import { loadEnv, defineConfig, Modules } from "@medusajs/framework/utils";
+import { ODOO_MODULE } from "./src/modules/odoo";
+import { loadEnv, defineConfig } from "@medusajs/framework/utils";
 
 // Завантаження середовищних змінних
 loadEnv(process.env.NODE_ENV!, process.cwd());
@@ -30,6 +29,8 @@ const plugins = [
 
 export default defineConfig({
   projectConfig: {
+    redisUrl: process.env.REDIS_URL, // 🔹 Підключення Redis
+
     databaseUrl: process.env.DATABASE_URL,
     http: {
       storeCors: process.env.STORE_CORS!,
@@ -39,31 +40,33 @@ export default defineConfig({
       cookieSecret: process.env.COOKIE_SECRET || "supersecret",
     },
   },
-  plugins, // Підключення плагінів
+  plugins,
   modules: {
     [ODOO_MODULE]: {
-      resolve: "./src/modules/odoo", // ← правильний шлях
+      resolve: "./src/modules/odoo",
       options: {
         url: process.env.ODOO_URL,
         dbName: process.env.ODOO_DB,
         username: process.env.ODOO_USERNAME,
-        password: process.env.ODOO_PASSWORD, // ← використовується правильне поле для паролю
+        password: process.env.ODOO_PASSWORD,
       },
     },
     [COMPANY_MODULE]: {
-      resolve: "./src/modules/company", // ← правильний шлях
+      resolve: "./src/modules/company",
     },
     [QUOTE_MODULE]: {
-      resolve: "./src/modules/quote", // ← правильний шлях
+      resolve: "./src/modules/quote",
     },
     [APPROVAL_MODULE]: {
-      resolve: "./src/modules/approval", // ← правильний шлях
+      resolve: "./src/modules/approval",
     },
-    [Modules.CACHE]: {
-      resolve: "@medusajs/medusa/cache-inmemory",
+    cache: {  // 🔹 Виправлено підключення кеша Redis
+      resolve: "@medusajs/medusa/cache-redis",
+      options: {
+        redisUrl: process.env.REDIS_URL, // 🔹 Встановлюємо URL Redis
+      },
     },
-    [Modules.WORKFLOW_ENGINE]: {
-      resolve: "@medusajs/medusa/workflow-engine-inmemory",
-    },
+        workflow_engine: false,
+
   },
 });

@@ -1,69 +1,58 @@
-require('dotenv').config();
-const axios = require('axios');
-const { MeiliSearch } = require('meilisearch');
+require("dotenv").config();
+const { MeiliSearch } = require("meilisearch");
+const { medusaRequest } = require("../../medusa-admin-client.js");
 
-// --- Підключення до Medusa Store API ---
-const medusa = axios.create({
-  baseURL: "http://localhost:9000/store",
-  timeout: 5000,
-  headers: {
-    "x-publishable-api-key": process.env.MEDUSA_STORE_API_KEY,
-  },
-});
-
-// --- Підключення до MeiliSearch ---
 const meili = new MeiliSearch({
   host: process.env.MEILISEARCH_HOST,
-  apiKey: process.env.MEILISEARCH_API_KEY
+  apiKey: process.env.MEILISEARCH_API_KEY,
 });
 
 async function reindexProducts() {
   try {
-    console.log("📦 Отримую товари з Medusa...");
-    const response = await medusa.get("/products", {
-      params: { limit: 1000 }
-    });
+    console.log("📦 Отримую всі продукти з Medusa...");
+    const response = await medusaRequest("get", "/products?sales_channel_id=sc_01JTRN9D3VBEH0GVQYJ8FF3DKT");
+    const actualProducts = response.products;
 
-    const products = response.data.products;
-    console.log(`🔍 Знайдено ${products.length} товарів. Обробка...`);
+    const meiliResponse = await meili.index("products").getDocuments({ limit: 1000 });
+    const meiliProductIds = new Set(meiliResponse.results.map(p => p.id));
+    const actualProductIds = new Set(actualProducts.map(p => p.id));
 
-    const documents = products.map((product) => ({
+    // 🗑 **Видаляємо застарілі товари**
+    const idsToDelete = [...meiliProductIds].filter(id => !actualProductIds.has(id));
+    if (idsToDelete.length > 0) {
+      const task = await meili.index("products").deleteDocuments(idsToDelete);
+      const status = await waitForTask(task.taskUid);
+      console.log(`✅ Видалено ${status.details.deletedDocuments} товарів.`);
+    }
+
+    // 📤 **Додаємо актуальні товари**
+    const documents = actualProducts.map((product) => ({
       id: product.id,
       title: product.title || "",
       description: product.description || "",
       handle: product.handle || "",
-      variants: (product.variants || []).map(variant => ({
+      sales_channel_id: "sc_01JTRN9D3VBEH0GVQYJ8FF3DKT",
+      variants: (product.variants || []).map((variant) => ({
         id: variant.id,
         title: variant.title,
         sku: variant.sku,
-        prices: variant.prices
-      }))
+        prices: variant.prices,
+      })),
     }));
 
-    const index = meili.index('products');
-    console.log("📤 Відправляю документи в MeiliSearch...");
-    const task = await index.addDocuments(documents);
-    console.log(`✅ Документи надіслані. ID завдання: ${task.taskUid}`);
-
-    // --- Перевіряємо статус індексації ---
+    const task = await meili.index("products").addDocuments(documents);
     const status = await waitForTask(task.taskUid);
-    if (status.status === "succeeded") {
-      console.log("🎉 Індексація завершена успішно!");
-    } else {
-      console.error("⚠️ Індексація завершилась з помилкою:", status);
-    }
-  } catch (error) {
-    console.error("❌ Помилка під час індексації:", error.message || error);
+    console.log(`✅ Оновлено ${documents.length} товарів.`);
+  } catch (err) {
+    console.error("❌ Помилка:", err.message || err);
   }
 }
 
-// --- Чекаємо завершення індексації в Meili ---
 async function waitForTask(taskUid) {
-  console.log("⏳ Очікую завершення індексації...");
   while (true) {
-    const task = await meili.tasks.getTask(taskUid); // 👈 правильний виклик
+    const task = await meili.tasks.getTask(taskUid);
     if (["succeeded", "failed"].includes(task.status)) return task;
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((r) => setTimeout(r, 1000));
   }
 }
 
